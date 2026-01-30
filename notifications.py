@@ -54,6 +54,10 @@ class NotificationService:
             lines.append(f"  Price: £{ticket.get('price', 'N/A'):.2f}")
             lines.append(f"  Quantity: {ticket.get('quantity', 'N/A')}")
             
+            trustable_seller = ticket.get('trustable_seller', False)
+            if trustable_seller:
+                lines.append(f"  Trustable Seller: ✓")
+            
             section = ticket.get('section')
             if section:
                 lines.append(f"  Section: {section}")

@@ -41,6 +41,10 @@ class TicketFilter:
         if not self._matches_quantity(ticket):
             return False
         
+        # Check trustable seller (if required)
+        if not self._matches_trustable_seller(ticket):
+            return False
+        
         return True
     
     def _matches_price(self, ticket: Dict) -> bool:
@@ -52,3 +56,13 @@ class TicketFilter:
         """Check if ticket quantity meets requirement."""
         quantity = ticket.get('quantity', 0)
         return quantity >= self.criteria.min_tickets
+    
+    def _matches_trustable_seller(self, ticket: Dict) -> bool:
+        """Check if ticket is from trustable seller (if required)."""
+        # If trustable_seller_only is False, accept all tickets
+        if not self.criteria.trustable_seller_only:
+            return True
+        
+        # If trustable_seller_only is True, only accept tickets from trustable sellers
+        trustable_seller = ticket.get('trustable_seller', False)
+        return trustable_seller

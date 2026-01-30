@@ -40,9 +40,9 @@ class TicketScraper:
                 page.goto(event_url, wait_until='networkidle', timeout=30000)
                 
                 # Wait for ticket listings to load
-                # Try multiple selectors that might contain ticket data
+                # The site uses .listing-row divs for ticket listings
                 try:
-                    page.wait_for_selector('[itemprop="offers"]', timeout=10000)
+                    page.wait_for_selector('.listing-row', timeout=10000)
                 except PlaywrightTimeoutError:
                     logger.warning("Ticket listings may not have loaded, continuing anyway")
                 
@@ -62,22 +62,18 @@ class TicketScraper:
         tickets = []
         
         try:
-            # Find all ticket offer elements
-            # The site uses schema.org markup with itemprop="offers"
-            offer_elements = page.query_selector_all('[itemprop="offers"]')
+            # Find all ticket listing rows
+            # The site uses .listing-row divs for ticket listings
+            listing_rows = page.query_selector_all('.listing-row')
             
-            for offer in offer_elements:
+            for listing_row in listing_rows:
                 try:
-                    ticket = self._parse_ticket_element(offer, event_url)
+                    ticket = self._parse_ticket_element(listing_row, event_url)
                     if ticket:
                         tickets.append(ticket)
                 except Exception as e:
                     logger.debug(f"Error parsing ticket element: {e}")
                     continue
-            
-            # If schema.org approach didn't work, try alternative selectors
-            if not tickets:
-                tickets = self._extract_tickets_alternative(page, event_url)
         
         except Exception as e:
             logger.error(f"Error extracting tickets: {e}", exc_info=True)
@@ -85,23 +81,30 @@ class TicketScraper:
         return tickets
     
     def _parse_ticket_element(self, element, event_url: str) -> Optional[Dict]:
-        """Parse a single ticket element."""
+        """Parse a single ticket listing-row element."""
         try:
-            # Extract price
-            price_elem = element.query_selector('[itemprop="price"]')
+            # Extract quantity from data-desired attribute
+            quantity = self._extract_quantity(element)
+            
+            # Extract price from .price div (contains "£336")
+            price_elem = element.query_selector('.price')
             if not price_elem:
                 return None
             
             price_text = price_elem.inner_text().strip()
-            price = float(price_text.replace('GBP', '').replace(',', '').strip())
+            # Remove "£" and parse price
+            import re
+            price_match = re.search(r'[\d,]+\.?\d*', price_text.replace(',', ''))
+            if not price_match:
+                return None
             
-            # Extract currency
-            currency_elem = element.query_selector('[itemprop="priceCurrency"]')
-            currency = currency_elem.inner_text().strip() if currency_elem else 'GBP'
+            price = float(price_match.group())
+            currency = 'GBP'
             
-            # Try to find quantity, section, row from surrounding elements
-            # These might be in parent containers or sibling elements
-            quantity = self._extract_quantity(element)
+            # Extract trustable seller status
+            trustable_seller = self._extract_trustable_seller(element)
+            
+            # Extract section and row (if available)
             section = self._extract_section(element)
             row = self._extract_row(element)
             
@@ -119,6 +122,7 @@ class TicketScraper:
                 'section': section,
                 'row': row,
                 'url': ticket_url,
+                'trustable_seller': trustable_seller,
                 'ticket_id': ticket_id
             }
         
@@ -126,58 +130,13 @@ class TicketScraper:
             logger.debug(f"Error parsing ticket element: {e}")
             return None
     
-    def _extract_tickets_alternative(self, page: Page, event_url: str) -> List[Dict]:
-        """Alternative extraction method if schema.org approach fails."""
-        tickets = []
-        
-        try:
-            # Look for common ticket listing patterns
-            # This is a fallback - we'll need to inspect the actual page structure
-            # and adjust selectors based on what we find
-            
-            # Try finding price elements directly
-            price_elements = page.query_selector_all('[class*="price"], [data-price], .price')
-            
-            for price_elem in price_elements:
-                try:
-                    price_text = price_elem.inner_text().strip()
-                    # Extract numeric price
-                    import re
-                    price_match = re.search(r'[\d,]+\.?\d*', price_text.replace(',', ''))
-                    if price_match:
-                        price = float(price_match.group())
-                        
-                        ticket = {
-                            'price': price,
-                            'currency': 'GBP',
-                            'quantity': 1,  # Default, will need to extract
-                            'section': None,
-                            'row': None,
-                            'url': event_url,
-                            'ticket_id': self._generate_ticket_id(price, 1, None, None)
-                        }
-                        tickets.append(ticket)
-                
-                except Exception as e:
-                    logger.debug(f"Error in alternative extraction: {e}")
-                    continue
-        
-        except Exception as e:
-            logger.error(f"Error in alternative extraction: {e}")
-        
-        return tickets
-    
     def _extract_quantity(self, element) -> int:
-        """Extract quantity available from ticket element."""
+        """Extract quantity from data-desired attribute."""
         try:
-            # Look for quantity indicators
-            quantity_elem = element.query_selector('[class*="quantity"], [class*="qty"], [data-quantity]')
-            if quantity_elem:
-                qty_text = quantity_elem.inner_text().strip()
-                import re
-                qty_match = re.search(r'\d+', qty_text)
-                if qty_match:
-                    return int(qty_match.group())
+            # Quantity is in data-desired attribute of listing-row
+            data_desired = element.get_attribute('data-desired')
+            if data_desired:
+                return int(data_desired)
         except:
             pass
         return 1  # Default to 1 if not found
@@ -220,6 +179,27 @@ class TicketScraper:
         except:
             pass
         return None
+    
+    def _extract_trustable_seller(self, element) -> bool:
+        """Extract trustable seller status from listing-row element."""
+        try:
+            # Check for .by-trustable-seller class
+            trustable_elem = element.query_selector('.by-trustable-seller')
+            if trustable_elem:
+                return True
+            
+            # Check for data-blue-rh="true" attribute
+            status_elem = element.query_selector('.status[data-blue-rh="true"]')
+            if status_elem:
+                return True
+            
+            # Also check if the listing-row itself or any child has data-blue-rh="true"
+            blue_rh = element.query_selector('[data-blue-rh="true"]')
+            if blue_rh:
+                return True
+        except:
+            pass
+        return False
     
     def _generate_ticket_id(self, price: float, quantity: int, section: Optional[str], row: Optional[str]) -> str:
         """Generate a unique ID for a ticket."""
