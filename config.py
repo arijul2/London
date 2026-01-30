@@ -11,29 +11,14 @@ load_dotenv()
 class SearchCriteria:
     """Search criteria for ticket matching."""
     match_name: str
-    min_price: float
+    min_tickets: int
     max_price: float
-    quantity_needed: int
-    preferred_sections: List[str]
     
-    @classmethod
-    def from_env(cls) -> 'SearchCriteria':
-        """Load search criteria from environment variables."""
-        match_name = os.getenv('MATCH_NAME', 'Arsenal vs Everton')
-        min_price = float(os.getenv('MIN_PRICE', '200'))
-        max_price = float(os.getenv('MAX_PRICE', '500'))
-        quantity_needed = int(os.getenv('QUANTITY_NEEDED', '2'))
-        
-        sections_str = os.getenv('PREFERRED_SECTIONS', '')
-        preferred_sections = [s.strip() for s in sections_str.split(',') if s.strip()]
-        
-        return cls(
-            match_name=match_name,
-            min_price=min_price,
-            max_price=max_price,
-            quantity_needed=quantity_needed,
-            preferred_sections=preferred_sections
-        )
+    def get_event_url(self, base_url: str) -> str:
+        """Construct event URL from match name."""
+        # Convert "Arsenal vs Everton" to "tickets-arsenal-everton"
+        match_slug = self.match_name.lower().replace(' vs ', '-').replace(' ', '-')
+        return f"{base_url}/tickets-{match_slug}"
 
 
 @dataclass
@@ -93,12 +78,71 @@ class Config:
     """Main configuration class."""
     
     def __init__(self):
-        self.search = SearchCriteria.from_env()
         self.notifications = NotificationSettings.from_env()
         self.monitor = MonitorSettings.from_env()
+        self.searches = self._load_searches()
     
-    def get_event_url(self) -> str:
-        """Construct event URL from match name."""
-        # Convert "Arsenal vs Everton" to "tickets-arsenal-everton"
-        match_slug = self.search.match_name.lower().replace(' vs ', '-').replace(' ', '-')
-        return f"{self.monitor.base_url}/tickets-{match_slug}"
+    def _load_searches(self) -> List[SearchCriteria]:
+        """Load search criteria for all matches."""
+        searches = []
+        match_num = 1
+        
+        # Load matches in format: MATCH_1_NAME, MATCH_1_MIN_TICKETS, MATCH_1_MAX_PRICE
+        while True:
+            match_name = os.getenv(f'MATCH_{match_num}_NAME')
+            if not match_name:
+                # No more matches found
+                break
+            
+            min_tickets = os.getenv(f'MATCH_{match_num}_MIN_TICKETS')
+            max_price = os.getenv(f'MATCH_{match_num}_MAX_PRICE')
+            
+            if not min_tickets or not max_price:
+                raise ValueError(
+                    f"MATCH_{match_num}_NAME is set but MATCH_{match_num}_MIN_TICKETS "
+                    f"or MATCH_{match_num}_MAX_PRICE is missing"
+                )
+            
+            try:
+                search = SearchCriteria(
+                    match_name=match_name.strip(),
+                    min_tickets=int(min_tickets),
+                    max_price=float(max_price)
+                )
+                searches.append(search)
+            except ValueError as e:
+                raise ValueError(
+                    f"Invalid configuration for MATCH_{match_num}: {e}"
+                )
+            
+            match_num += 1
+        
+        # If no matches found with MATCH_N format, try legacy single match format
+        if not searches:
+            match_name = os.getenv('MATCH_NAME')
+            min_tickets = os.getenv('MIN_TICKETS', '2')
+            max_price = os.getenv('MAX_PRICE', '500')
+            
+            if match_name:
+                try:
+                    search = SearchCriteria(
+                        match_name=match_name.strip(),
+                        min_tickets=int(min_tickets),
+                        max_price=float(max_price)
+                    )
+                    searches.append(search)
+                except ValueError as e:
+                    raise ValueError(f"Invalid configuration: {e}")
+            else:
+                # Default example
+                searches.append(SearchCriteria(
+                    match_name='Arsenal vs Everton',
+                    min_tickets=2,
+                    max_price=500.0
+                ))
+        
+        return searches
+    
+    def get_searches(self) -> List[SearchCriteria]:
+        """Get all search criteria."""
+        return self.searches

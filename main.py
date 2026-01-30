@@ -24,18 +24,18 @@ def main():
         config = Config()
         
         # Validate configuration
-        if not config.search.match_name:
-            logger.error("MATCH_NAME not configured. Please set it in .env file.")
+        searches = config.get_searches()
+        if not searches:
+            logger.error("No matches configured. Please set MATCH_1_NAME, MATCH_1_MIN_TICKETS, MATCH_1_MAX_PRICE in .env file.")
             sys.exit(1)
         
         logger.info("=" * 60)
         logger.info("Premier League Ticket Monitor")
         logger.info("=" * 60)
-        logger.info(f"Match: {config.search.match_name}")
-        logger.info(f"Price range: £{config.search.min_price} - £{config.search.max_price}")
-        logger.info(f"Quantity needed: {config.search.quantity_needed}")
-        if config.search.preferred_sections:
-            logger.info(f"Preferred sections: {', '.join(config.search.preferred_sections)}")
+        logger.info(f"Monitoring {len(searches)} match(es):")
+        for search in searches:
+            logger.info(f"  - {search.match_name}")
+            logger.info(f"    Min tickets: {search.min_tickets}, Max price: £{search.max_price}")
         logger.info("=" * 60)
         
         # Create and start monitor

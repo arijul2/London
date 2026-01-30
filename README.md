@@ -35,21 +35,34 @@ Automated ticket monitoring system for Premier League matches on fanpass.net. Mo
    ```
    
    Edit `.env` with your preferences:
-   - Set the match you want to monitor
-   - Configure price range and quantity
+   - Configure matches to monitor (each with its own criteria)
    - Set up notification preferences
 
 ## Configuration
 
 Edit the `.env` file with your settings:
 
-### Search Criteria
+### Match Configuration
 
-- `MATCH_NAME`: The match to monitor (e.g., "Arsenal vs Everton")
-- `MIN_PRICE`: Minimum price per ticket in GBP
-- `MAX_PRICE`: Maximum price per ticket in GBP
-- `QUANTITY_NEEDED`: Number of tickets needed
-- `PREFERRED_SECTIONS`: Comma-separated list of preferred sections (optional)
+Each match requires three parameters:
+- `MATCH_N_NAME`: Match name (e.g., "Arsenal vs Everton")
+- `MATCH_N_MIN_TICKETS`: Minimum number of tickets needed
+- `MATCH_N_MAX_PRICE`: Maximum price per ticket in GBP
+
+**Example for multiple matches:**
+```bash
+# Match 1
+MATCH_1_NAME=Arsenal vs Everton
+MATCH_1_MIN_TICKETS=2
+MATCH_1_MAX_PRICE=500
+
+# Match 2
+MATCH_2_NAME=Liverpool vs Manchester City
+MATCH_2_MIN_TICKETS=1
+MATCH_2_MAX_PRICE=300
+```
+
+Each match is monitored independently with its own criteria. All matches are checked simultaneously every N minutes.
 
 ### Monitoring
 
