@@ -1,6 +1,7 @@
 """Playwright-based scraper for fanpass.net ticket listings."""
 import logging
 import hashlib
+import time
 from typing import List, Dict, Optional
 from playwright.sync_api import sync_playwright, Page, TimeoutError as PlaywrightTimeoutError
 
@@ -39,12 +40,20 @@ class TicketScraper:
                 logger.info(f"Navigating to {event_url}")
                 page.goto(event_url, wait_until='networkidle', timeout=30000)
                 
-                # Wait for ticket listings to load
-                # The site uses .listing-row divs for ticket listings
+                # Give the page a moment for JS to render listings
+                time.sleep(3)
+                
+                # Wait for ticket listings to load (.listing-row)
                 try:
-                    page.wait_for_selector('.listing-row', timeout=10000)
+                    page.wait_for_selector('.listing-row', timeout=20000)
                 except PlaywrightTimeoutError:
-                    logger.warning("Ticket listings may not have loaded, continuing anyway")
+                    # Retry once after a longer delay (slower pages / single listing)
+                    logger.warning("Ticket listings not ready yet, retrying after 5s...")
+                    time.sleep(5)
+                    try:
+                        page.wait_for_selector('.listing-row', timeout=15000)
+                    except PlaywrightTimeoutError:
+                        logger.warning("Ticket listings may not have loaded, continuing anyway")
                 
                 # Extract ticket data
                 tickets = self._extract_tickets(page, event_url)
