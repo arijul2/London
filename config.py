@@ -13,7 +13,7 @@ class SearchCriteria:
     match_name: str
     min_tickets: int
     max_price: float
-    trustable_seller_only: bool = False
+    trustable_seller_only: bool = True
     notify_seen_tickets: bool = False  # If True, include previously seen listings in notifications
     
     def get_event_url(self, base_url: str) -> str:
@@ -98,7 +98,7 @@ class Config:
             
             min_tickets = os.getenv(f'MATCH_{match_num}_MIN_TICKETS')
             max_price = os.getenv(f'MATCH_{match_num}_MAX_PRICE')
-            trustable_seller_only = os.getenv(f'MATCH_{match_num}_TRUSTABLE_SELLER_ONLY', 'false').lower() == 'true'
+            trustable_seller_only = os.getenv(f'MATCH_{match_num}_TRUSTABLE_SELLER_ONLY', 'true').lower() == 'true'
             notify_seen_tickets = os.getenv(f'MATCH_{match_num}_NOTIFY_SEEN_TICKETS', 'false').lower() == 'true'
             
             if not min_tickets or not max_price:
@@ -128,7 +128,7 @@ class Config:
             match_name = os.getenv('MATCH_NAME')
             min_tickets = os.getenv('MIN_TICKETS', '2')
             max_price = os.getenv('MAX_PRICE', '500')
-            trustable_seller_only = os.getenv('TRUSTABLE_SELLER_ONLY', 'false').lower() == 'true'
+            trustable_seller_only = os.getenv('TRUSTABLE_SELLER_ONLY', 'true').lower() == 'true'
             notify_seen_tickets = os.getenv('NOTIFY_SEEN_TICKETS', 'false').lower() == 'true'
             
             if match_name:
@@ -149,7 +149,7 @@ class Config:
                     match_name='Arsenal vs Everton',
                     min_tickets=2,
                     max_price=500.0,
-                    trustable_seller_only=False,
+                    trustable_seller_only=True,
                     notify_seen_tickets=False
                 ))
         
