@@ -49,6 +49,10 @@ Each match requires three parameters:
 - `MATCH_N_MIN_TICKETS`: Minimum number of tickets needed
 - `MATCH_N_MAX_PRICE`: Maximum price per ticket in GBP
 
+Optional per-match:
+- `MATCH_N_TRUSTABLE_SELLER_ONLY`: If `true`, only listings from trustable sellers (default: `false`)
+- `MATCH_N_NOTIFY_SEEN_TICKETS`: If `true`, every check sends a notification with all current matching listings (including ones you’ve already seen). If `false`, you’re only notified when new matching tickets appear (default: `false`).
+
 **Example for multiple matches:**
 ```bash
 # Match 1

@@ -85,20 +85,31 @@ class TicketMonitor:
                 logger.info(f"No tickets match criteria for {search.match_name}")
                 return
             
-            # Check for new tickets
+            # Update DB with any new tickets (so we track what we've seen)
             new_tickets = self.database.get_new_tickets(
                 matching_tickets,
                 search.match_name
             )
             
-            if new_tickets:
-                logger.info(f"Found {len(new_tickets)} new matching ticket(s) for {search.match_name}!")
-                self.notifications.send_notification(
-                    new_tickets,
-                    search.match_name
-                )
+            # Decide what to notify: all matching tickets (including seen) or only new ones
+            if search.notify_seen_tickets:
+                # User wants reminders of all current matching listings, including previously seen
+                if matching_tickets:
+                    logger.info(f"Sending notification for {len(matching_tickets)} matching ticket(s) for {search.match_name} (including previously seen)")
+                    self.notifications.send_notification(
+                        matching_tickets,
+                        search.match_name
+                    )
             else:
-                logger.info(f"No new tickets found for {search.match_name}")
+                # Default: only notify for new tickets
+                if new_tickets:
+                    logger.info(f"Found {len(new_tickets)} new matching ticket(s) for {search.match_name}!")
+                    self.notifications.send_notification(
+                        new_tickets,
+                        search.match_name
+                    )
+                else:
+                    logger.info(f"No new tickets found for {search.match_name}")
         
         except Exception as e:
             logger.error(f"Error checking {search.match_name}: {e}", exc_info=True)

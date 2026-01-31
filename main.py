@@ -35,7 +35,7 @@ def main():
         logger.info(f"Monitoring {len(searches)} match(es):")
         for search in searches:
             logger.info(f"  - {search.match_name}")
-            logger.info(f"    Min tickets: {search.min_tickets}, Max price: £{search.max_price}")
+            logger.info(f"    Min tickets: {search.min_tickets}, Max price: £{search.max_price}, Notify seen: {search.notify_seen_tickets}")
         logger.info("=" * 60)
         
         # Create and start monitor

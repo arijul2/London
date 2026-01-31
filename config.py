@@ -14,6 +14,7 @@ class SearchCriteria:
     min_tickets: int
     max_price: float
     trustable_seller_only: bool = False
+    notify_seen_tickets: bool = False  # If True, include previously seen listings in notifications
     
     def get_event_url(self, base_url: str) -> str:
         """Construct event URL from match name."""
@@ -98,6 +99,7 @@ class Config:
             min_tickets = os.getenv(f'MATCH_{match_num}_MIN_TICKETS')
             max_price = os.getenv(f'MATCH_{match_num}_MAX_PRICE')
             trustable_seller_only = os.getenv(f'MATCH_{match_num}_TRUSTABLE_SELLER_ONLY', 'false').lower() == 'true'
+            notify_seen_tickets = os.getenv(f'MATCH_{match_num}_NOTIFY_SEEN_TICKETS', 'false').lower() == 'true'
             
             if not min_tickets or not max_price:
                 raise ValueError(
@@ -110,7 +112,8 @@ class Config:
                     match_name=match_name.strip(),
                     min_tickets=int(min_tickets),
                     max_price=float(max_price),
-                    trustable_seller_only=trustable_seller_only
+                    trustable_seller_only=trustable_seller_only,
+                    notify_seen_tickets=notify_seen_tickets
                 )
                 searches.append(search)
             except ValueError as e:
@@ -126,6 +129,7 @@ class Config:
             min_tickets = os.getenv('MIN_TICKETS', '2')
             max_price = os.getenv('MAX_PRICE', '500')
             trustable_seller_only = os.getenv('TRUSTABLE_SELLER_ONLY', 'false').lower() == 'true'
+            notify_seen_tickets = os.getenv('NOTIFY_SEEN_TICKETS', 'false').lower() == 'true'
             
             if match_name:
                 try:
@@ -133,7 +137,8 @@ class Config:
                         match_name=match_name.strip(),
                         min_tickets=int(min_tickets),
                         max_price=float(max_price),
-                        trustable_seller_only=trustable_seller_only
+                        trustable_seller_only=trustable_seller_only,
+                        notify_seen_tickets=notify_seen_tickets
                     )
                     searches.append(search)
                 except ValueError as e:
@@ -144,7 +149,8 @@ class Config:
                     match_name='Arsenal vs Everton',
                     min_tickets=2,
                     max_price=500.0,
-                    trustable_seller_only=False
+                    trustable_seller_only=False,
+                    notify_seen_tickets=False
                 ))
         
         return searches
