@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ticket Listings – List date vs price</title>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      background: #0f0f0f;
+      color: #e5e5e5;
+    }
+    h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+    p { color: #a3a3a3; margin: 0 0 1rem 0; }
+    label {
+      display: block;
+      margin-bottom: 0.35rem;
+      font-size: 0.9rem;
+      color: #a3a3a3;
+    }
+    select {
+      width: 100%;
+      max-width: 400px;
+      padding: 0.5rem 0.75rem;
+      font-size: 1rem;
+      background: #262626;
+      color: #e5e5e5;
+      border: 1px solid #404040;
+      border-radius: 6px;
+      margin-bottom: 1.5rem;
+    }
+    select:focus { outline: none; border-color: #737373; }
+    #chart {
+      width: 100%;
+      min-height: 450px;
+      background: #171717;
+      border-radius: 8px;
+    }
+    .loading { color: #a3a3a3; }
+    .error { color: #f87171; }
+  </style>
+</head>
+<body>
+  <h1>Ticket list date vs price</h1>
+  <p>Pick a match to see when tickets were listed (x) and at what price (y).</p>
+
+  <label for="match">Match</label>
+  <select id="match" disabled>
+    <option value="">Loading matches…</option>
+  </select>
+
+  <div id="chart"></div>
+  <p id="status" class="loading"></p>
+
+  <script>
+    const API = '';
+    const matchSelect = document.getElementById('match');
+    const chartDiv = document.getElementById('chart');
+    const statusEl = document.getElementById('status');
+
+    async function loadMatches() {
+      try {
+        const res = await fetch(API + '/api/matches');
+        if (!res.ok) throw new Error('Failed to load matches');
+        const names = await res.json();
+        matchSelect.innerHTML = '';
+        matchSelect.disabled = false;
+        if (names.length === 0) {
+          matchSelect.innerHTML = '<option value="">No matches in database</option>';
+          return;
+        }
+        matchSelect.innerHTML = '<option value="">Select a match</option>';
+        names.forEach(name => {
+          const opt = document.createElement('option');
+          opt.value = encodeURIComponent(name);
+          opt.textContent = name;
+          matchSelect.appendChild(opt);
+        });
+        matchSelect.addEventListener('change', onMatchChange);
+      } catch (e) {
+        statusEl.textContent = 'Error loading matches: ' + e.message;
+        statusEl.className = 'error';
+      }
+    }
+
+    async function onMatchChange() {
+      const encoded = matchSelect.value;
+      if (!encoded) {
+        Plotly.purge(chartDiv);
+        statusEl.textContent = '';
+        return;
+      }
+      const matchName = decodeURIComponent(encoded);
+      statusEl.textContent = 'Loading…';
+      statusEl.className = 'loading';
+      try {
+        const res = await fetch(API + '/api/matches/' + encoded + '/tickets');
+        if (!res.ok) throw new Error('Failed to load tickets');
+        const tickets = await res.json();
+        if (tickets.length === 0) {
+          Plotly.purge(chartDiv);
+          statusEl.textContent = 'No tickets for this match.';
+          return;
+        }
+        const dates = tickets.map(t => t.first_seen);
+        const prices = tickets.map(t => t.price);
+        const hover = tickets.map(t =>
+          `£${t.price}<br>Qty: ${t.quantity ?? '–'}<br>Section: ${t.section ?? '–'} Row: ${t.row ?? '–'}`
+        );
+        Plotly.newPlot(chartDiv, [{
+          x: dates,
+          y: prices,
+          type: 'scatter',
+          mode: 'markers',
+          marker: { size: 8, color: '#22c55e', line: { color: '#14532d', width: 1 } },
+          text: hover,
+          hoverinfo: 'text'
+        }], {
+          margin: { t: 24, r: 24, b: 48, l: 56 },
+          paper_bgcolor: '#171717',
+          plot_bgcolor: '#171717',
+          xaxis: {
+            title: 'Date listed',
+            gridcolor: '#262626',
+            tickfont: { color: '#a3a3a3' },
+            titlefont: { color: '#e5e5e5' }
+          },
+          yaxis: {
+            title: 'Price (£)',
+            gridcolor: '#262626',
+            tickfont: { color: '#a3a3a3' },
+            titlefont: { color: '#e5e5e5' }
+          },
+          font: { color: '#e5e5e5' }
+        }, { responsive: true });
+        statusEl.textContent = tickets.length + ' listing(s).';
+        statusEl.className = '';
+      } catch (e) {
+        statusEl.textContent = 'Error: ' + e.message;
+        statusEl.className = 'error';
+        Plotly.purge(chartDiv);
+      }
+    }
+
+    loadMatches();
+  </script>
+</body>
+</html>

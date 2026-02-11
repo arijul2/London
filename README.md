@@ -104,6 +104,13 @@ RUN_ONCE=true python main.py
 
 This runs a single check and exits. Useful for testing your configuration.
 
+### Web dashboard (list date vs price)
+```bash
+python app.py
+```
+
+Then open http://localhost:5000. Choose a match to see a scatter plot of when tickets were listed (x) and price (y). Data comes from the same `tickets.db` used by the monitor.
+
 ## How It Works
 
 1. **Scraping**: Uses Playwright to load the fanpass.net event page and extract ticket data (price, quantity, section, row)
